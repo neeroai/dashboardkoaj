@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Ejecutivo: Proyecto IA Permoda/Koaj</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Gris más claro para el fondo general */
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease-in-out;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .progress-bar-container {
+            background-color: #e5e7eb;
+            border-radius: 0.375rem;
+            overflow: hidden;
+            height: 22px;
+        }
+        .progress-bar {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+            transition: width 0.6s ease-in-out;
+        }
+        .rag-red { background-color: #ef4444; color: white; }
+        .rag-amber { background-color: #f59e0b; color: #422006;}
+        .rag-green { background-color: #22c55e; color: white;}
+
+        .tab-button {
+            padding: 0.85rem 1.6rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+            cursor: pointer;
+            background-color: #e5e7eb;
+            color: #374151;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-button.active {
+            background-color: white;
+            color: #1e40af; /* Azul más oscuro para la pestaña activa */
+            border-bottom: 3px solid #1e40af;
+            font-weight: 600;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .table th, .table td {
+            padding: 0.85rem 1rem;
+            vertical-align: middle;
+            border-top: 1px solid #e5e7eb;
+        }
+        .table th {
+            font-weight: 700;
+            background-color: #f3f4f6;
+            color: #1e293b;
+            letter-spacing: 0.03em;
+        }
+        .table tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        .table tbody tr:hover {
+            background-color: #e0e7ef;
+            transition: background 0.2s;
+        }
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.6rem;
+            border: 2px solid white;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px; 
+            background-color: #374151; 
+            color: #fff;
+            text-align: left; 
+            border-radius: 8px;
+            padding: 10px;
+            position: absolute;
+            z-index: 10;
+            bottom: 130%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #374151 transparent transparent transparent;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        .timeline { position: relative; margin: 20px 0; }
+        .timeline::before {
+            content: ''; position: absolute; left: 10px; 
+            top: 0; bottom: 0; width: 4px; background-color: #9ca3af; border-radius: 2px;
+        }
+        .timeline-item { position: relative; margin-bottom: 25px; padding-left: 35px; }
+        .timeline-item::before { 
+            content: ''; position: absolute; left: 0px; top: 5px; width: 20px; height: 20px;
+            border-radius: 50%; background-color: white; border: 4px solid #9ca3af; z-index: 1;
+        }
+        .timeline-content { background-color: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .timeline-content h4 { margin-top: 0; color: #1e40af; font-size: 1.1rem; }
+        .timeline-item.completed::before { border-color: #22c55e; background-color: #22c55e; }
+        .timeline-item.in-progress::before { border-color: #f59e0b; background-color: #f59e0b; }
+        .timeline-item.pending::before { border-color: #6b7280; background-color: #6b7280; }
+        .timeline-item.completed .timeline-content { border-left: 5px solid #22c55e; }
+        .timeline-item.in-progress .timeline-content { border-left: 5px solid #f59e0b; }
+        .timeline-item.pending .timeline-content { border-left: 5px solid #6b7280; }
+
+        .kpi-card {
+            background-color: white;
+            padding: 1.5rem 1.2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            min-height: 170px;
+        }
+        .kpi-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            margin-bottom: 0.2rem;
+        }
+        .kpi-value {
+            font-size: 2.3rem;
+            font-weight: 800;
+            color: #1e40af;
+            letter-spacing: -0.02em;
+        }
+        .kpi-label {
+            font-size: 1rem;
+            color: #475569;
+            margin-top: 0.15rem;
+            font-weight: 500;
+        }
+        .rag-indicator {
+            padding: 0.3rem 0.8rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: inline-block;
+        }
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #1f2937; 
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-6 lg:p-8">
+    <header class="mb-8 text-center">
+        <h1 class="text-4xl font-bold text-gray-800">Dashboard Ejecutivo de Seguimiento</h1>
+        <h2 class="text-2xl font-semibold text-blue-700">Proyecto Implementación IA Permoda/Koaj</h2>
+        <p class="text-gray-600 text-lg mt-1" id="reportDateText">Informe al: 22 de Mayo, 2025</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="kpi-card">
+            <span class="kpi-icon" aria-hidden="true">
+                <svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M8 12l2 2 4-4"/></svg>
+            </span>
+            <div class="kpi-value" id="globalProgressValue">63.62%</div>
+            <div class="kpi-label">Progreso Global del Proyecto</div>
+            <div id="globalRagStatus" class="rag-indicator mt-2">ÁMBAR</div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-icon" aria-hidden="true">
+                <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 8v4m0 4h.01"/></svg>
+            </span>
+            <div class="kpi-value" id="criticalTasksValue">0</div>
+            <div class="kpi-label">Tareas Críticas Bloqueadas</div>
+            <div id="criticalTasksRagStatus" class="rag-indicator mt-2">VERDE</div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-icon" aria-hidden="true">
+                <svg class="w-10 h-10 text-pink-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21C12 21 4 13.5 4 8.5C4 5.42 6.42 3 9.5 3C11.24 3 12.91 3.81 14 5.08C15.09 3.81 16.76 3 18.5 3C21.58 3 24 5.42 24 8.5C24 13.5 16 21 16 21H12Z" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            </span>
+            <div class="kpi-value" id="marketingProgressValue">20%</div> 
+            <div class="kpi-label">Progreso Área Marketing</div>
+            <div id="marketingRagStatus" class="rag-indicator mt-2">ROJO</div>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-icon" aria-hidden="true">
+                <svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 8v4m0 4h.01"/></svg>
+            </span>
+            <div class="kpi-value" id="pendingClientActionsValue">0</div>
+            <div class="kpi-label">Dependencias Críticas "Cliente"</div>
+            <div id="pendingClientActionsRagStatus" class="rag-indicator mt-2">VERDE</div>
+        </div>
+    </div>
+
+    <div class="card p-6 mb-8">
+        <h3 class="section-title">Hoja de Ruta del Proyecto</h3>
+        <div class="timeline">
+            </div>
+    </div>
+    
+    <div class="mb-6">
+        <div class="flex border-b border-gray-300">
+            <button class="tab-button active" onclick="openTab(event, 'sacTab')">SAC (<span id="sacProgressPercentage">82</span>%)</button>
+            <button class="tab-button" onclick="openTab(event, 'ventasTab')">Ventas (<span id="ventasProgressPercentage">62</span>%)</button>
+            <button class="tab-button" onclick="openTab(event, 'marketingTab')">Marketing (<span id="marketingProgressPercentage">20</span>%)</button> 
+            <button class="tab-button" onclick="openTab(event, 'pendingTasksTab')">Tareas Pendientes Detalladas</button>
+        </div>
+    </div>
+
+    <div id="sacTab" class="tab-content active card p-6">
+        <h3 class="section-title">Detalle Área: Servicio al Cliente (SAC) - <span id="sacAreaProgressText">82</span>% <span id="sacAreaRag" class="rag-indicator ml-2">VERDE</span></h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h4 class="text-lg font-semibold text-gray-700 mb-3">Progreso General SAC</h4>
+                <div id="sacProgressChart" class="w-full h-56"></div>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold text-gray-700 mb-3">Tareas Clave SAC</h4>
+                <div id="sacTasksList" class="space-y-3 overflow-y-auto max-h-72 pr-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="ventasTab" class="tab-content card p-6">
+        <h3 class="section-title">Detalle Área: Ventas - <span id="ventasAreaProgressText">62</span>% <span id="ventasAreaRag" class="rag-indicator ml-2">ÁMBAR</span></h3>
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h4 class="text-lg font-semibold text-gray-700 mb-3">Progreso General Ventas</h4>
+                <div id="ventasProgressChart" class="w-full h-56"></div>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold text-gray-700 mb-3">Tareas Clave Ventas</h4>
+                <div id="ventasTasksList" class="space-y-3 overflow-y-auto max-h-72 pr-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="marketingTab" class="tab-content card p-6">
+        <h3 class="section-title">Detalle Área: Marketing - <span id="marketingAreaProgressText">20</span>% <span id="marketingAreaRag" class="rag-indicator ml-2">ROJO</span></h3>
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h4 class="text-lg font-semibold text-gray-700 mb-3">Progreso General Marketing</h4>
+                <div id="marketingProgressChart" class="w-full h-56"></div>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold text-gray-700 mb-3">Tareas Clave Marketing</h4>
+                <div id="marketingTasksList" class="space-y-3 overflow-y-auto max-h-72 pr-2"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="pendingTasksTab" class="tab-content card p-6">
+        <h3 class="section-title">Resumen de Tareas Pendientes Críticas</h3>
+        <p class="text-sm text-gray-500 mb-4">Datos de progreso y tareas pendientes basados en el análisis contractual y el estado actual del proyecto.</p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 table">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                    <tr>
+                        <th scope="col" class="px-4 py-3">Área</th>
+                        <th scope="col" class="px-4 py-3">Tarea Crítica</th>
+                        <th scope="col" class="px-4 py-3">Estado Actual / Bloqueo</th>
+                        <th scope="col" class="px-4 py-3">Responsable(s)</th>
+                        <th scope="col" class="px-4 py-3">Progreso</th>
+                        <th scope="col" class="px-4 py-3">Fecha Est. Culminación</th>
+                        <th scope="col" class="px-4 py-3">Impacto Potencial</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingTasksTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer class="mt-12 text-center text-sm text-gray-500">
+        <p>Este dashboard es una representación del estado del proyecto Permoda/Koaj al <strong>22 de Mayo, 2025</strong>.</p>
+        <p>Los porcentajes de progreso y detalles de tareas se basan en el alcance contractual y el estado actual conocido del proyecto.</p>
+        <p>Para un seguimiento preciso, se recomienda actualizar esta información con los avances semanales correspondientes.</p>
+    </footer>
+
+<script>
+    // --- DATOS DEL PROYECTO (Basados en Estrategia, PDF del 15-Mayo-2025 y Contrato NEERO) ---
+    const projectData = {
+        reportDate: "22 de Mayo, 2025",
+        overallProgress: 63.62, 
+        stages: [ 
+            { name: "ETAPA I: Configuración Inicial", dateRange: "DIC-24 a ENE-25", status: "Completada" },
+            { name: "ETAPA II: Actualización de Procesos", dateRange: "FEB-25 a MAR-25", status: "Completada" },
+            { name: "ETAPA III: Tecnología y Desarrollo", dateRange: "ABR-25 a JUN-25", status: "En Progreso" },
+            { name: "ETAPA IV: Monitoreo y Soporte", dateRange: "JUL-25 a ENE-26", status: "Pendiente" },
+        ],
+        areas: [ // Removida el área de Tecnología y Desarrollo de este array
+            {
+                name: "SAC",
+                progress: 82,
+                ragStatus: "VERDE",
+                tasks: [
+                    { name: "Agentes AI", progress: 70, details: "Necesario completar entrenamiento, corregir errores, integrar OMS. Alcance contractual con Neero incluye desarrollo de agentes IA multimodales.", responsible: "Tecnología Permoda, Neero", pending: "Completar entrenamiento, integrar OMS.", impact: "Funcionalidad limitada del Agente AI SAC.", dueDate: "Junio 2025" },
+                    { name: "Devoluciones", progress: 80, details: "Aval por parte de SAC para pasar a producción.", responsible: "SAC", pending: "Aval para producción.", impact: "Retraso en automatización de devoluciones.", dueDate: "Mayo 2025" },
+                    { name: "Reportar Novedades", progress: 50, details: "Info incompleta, flujo migrado. Necesita mejora.", responsible: "SAC, Neero", pending: "Completar info, mejorar respuestas.", impact: "Información incompleta para cliente.", dueDate: "Junio 2025" },
+                    { name: "Información", progress: 60, details: "Respuestas del flujo migrado necesitan mejora.", responsible: "SAC, Neero", pending: "Mejorar respuestas.", impact: "Calidad de respuesta subóptima.", dueDate: "Junio 2025" },
+                    { name: "Estados de Pedido", progress: 100, details: "Funcionando.", responsible: "N/A", pending: "", impact:"", dueDate: "N/A"},
+                    { name: "Evaluar Servicios", progress: 100, details: "Encuesta finalizada.", responsible: "N/A", pending: "", impact:"", dueDate: "N/A"},
+                    { name: "Migración Flujos", progress: 100, details: "Flujos migrados. Contrato Neero incluye migración de flujos cerrados de MessageBird (Entregable 1).", responsible: "Neero, SAC", pending: "", impact:"", dueDate: "N/A"},
+                ]
+            },
+            {
+                name: "Ventas",
+                progress: 62,
+                ragStatus: "ÁMBAR",
+                tasks: [
+                    { name: "Agente AI (Ventas)", progress: 60, details: "Entrenamiento para identificar marcas. Alcance contractual con Neero incluye desarrollo de agentes IA para ventas.", responsible: "Tecnología Permoda, Neero", pending: "Entrenamiento para identificar marcas.", impact: "Funcionalidad limitada del Agente AI Ventas.", dueDate: "Junio 2025" },
+                    { name: "Integración Pasarela", progress: 0, details: "Iniciar pruebas con Tecnología Permoda.", responsible: "Tecnología Permoda, Neero", pending: "Iniciar pruebas.", impact: "Bloquea funcionalidad de pagos.", dueDate: "Julio 2025" },
+                    { name: "Integración OMS", progress: 0, details: "A la espera de nuevas OMS de Tecnología Permoda. Contrato Neero menciona diagnóstico y cotización para APIs de sistemas externos.", responsible: "Tecnología Permoda, Neero", pending: "A espera de nuevas OMS y/o diagnóstico API.", impact: "Bloquea gestión de órdenes de venta.", dueDate: "Julio 2025" },
+                    { name: "Catálogo", progress: 100, details: "Funcionando.", responsible: "N/A", pending: "", impact:"", dueDate: "N/A"},
+                    { name: "Lista de Precios", progress: 100, details: "Funcionando.", responsible: "N/A", pending: "", impact:"", dueDate: "N/A"},
+                    { name: "Inventario", progress: 100, details: "Funcionando.", responsible: "N/A", pending: "", impact:"", dueDate: "N/A"},
+                    { name: "Tiendas", progress: 100, details: "Funcionando.", responsible: "N/A", pending: "", impact:"", dueDate: "N/A"},
+                ]
+            },
+            {
+                name: "Marketing",
+                progress: 20, 
+                ragStatus: "ROJO",
+                tasks: [
+                    { name: "Implementación Estrategia Marketing Omnicanal en Bird (80 Flujos)", progress: 15, details: "Desarrollo e implementación completa de hasta 80 flujos de automatización de marketing en Bird (Contrato Neero). Incluye levantamiento journeys, configuración, personalización, pruebas y lanzamiento. Duración contractual 4 meses.", responsible: "Neero, Marketing Permoda", pending: "Avance en las 4 fases contractuales. Actualmente en Mes ~5 del proyecto global, esta estrategia debería estar finalizando o finalizada.", impact: "Estrategia de marketing automatizada no operativa. Incumplimiento de plazos contractuales de Neero.", dueDate: "Junio 2025" },
+                    { name: "BBDD KOAJ Lovers", progress: 0, details: "Sin acceso a la base de datos.", responsible: "Cliente (Permoda)", pending: "Otorgar acceso a BBDD.", impact: "Imposibilidad de segmentar y actuar sobre este grupo clave.", dueDate: "A definir (Depende Cliente)" },
+                    { name: "Journeys / Grupo II (Parte de 80 flujos)", progress: 0, details: "Esperando finalización Journey Grupo I y avance general de estrategia omnicanal.", responsible: "Neero, Marketing Permoda", pending: "Finalizar Journey Grupo I.", impact: "Retraso en despliegue de campañas Grupo II.", dueDate: "Julio 2025" },
+                    { name: "Carritos Abandonados (Parte de 80 flujos)", progress: 60, details: "Plantilla creada, falta actualizar mensaje.", responsible: "Neero, Marketing Permoda", pending: "Actualizar mensaje plantilla.", impact: "Efectividad reducida de recuperación.", dueDate: "Junio 2025" },
+                    { name: "Acciones de Recompra (Parte de 80 flujos)", progress: 60, details: "Plantilla creada, falta actualizar mensaje.", responsible: "Neero, Marketing Permoda", pending: "Actualizar mensaje plantilla.", impact: "Efectividad reducida de campañas.", dueDate: "Junio 2025" },
+                    { name: "Acciones Clientes Fríos (Parte de 80 flujos)", progress: 60, details: "Plantilla creada, falta actualizar mensaje.", responsible: "Neero, Marketing Permoda", pending: "Actualizar mensaje plantilla.", impact: "Efectividad reducida de reactivación.", dueDate: "Junio 2025" },
+                    { name: "BBDD Clientes Ecommerce", progress: 70, details: "Pendiente envíos masivos para observar comportamiento.", responsible: "Marketing Permoda", pending: "Realizar envíos masivos.", impact: "Incertidumbre sobre comportamiento BBDD.", dueDate: "Mayo 2025" },
+                ]
+            }
+        ],
+        kpis: {
+            criticalTasksBlocked: 0, 
+            pendingClientActions: 0 
+        }
+    };
+
+    // --- FUNCIONES AUXILIARES ---
+    function getRagClass(progress, isForText = false) {
+        if (progress < 30) return isForText ? 'text-red-600' : 'rag-red';
+        if (progress < 70) return isForText ? 'text-yellow-600' : 'rag-amber';
+        return isForText ? 'text-green-600' : 'rag-green';
+    }
+    function getRagStatusText(progress) {
+        if (progress < 30) return 'ROJO';
+        if (progress < 70) return 'ÁMBAR';
+        return 'VERDE';
+    }
+
+    // --- LÓGICA DEL DASHBOARD ---
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('reportDateText').innerText = `Informe al: ${projectData.reportDate}`;
+
+        document.getElementById('globalProgressValue').innerText = `${projectData.overallProgress}%`;
+        const globalRagDiv = document.getElementById('globalRagStatus');
+        globalRagDiv.textContent = getRagStatusText(projectData.overallProgress);
+        globalRagDiv.className = `rag-indicator mt-2 ${getRagClass(projectData.overallProgress)}`;
+        
+        const marketingAreaKpi = projectData.areas.find(a=>a.name === "Marketing");
+        if (marketingAreaKpi) {
+            document.getElementById('marketingProgressValue').innerText = `${marketingAreaKpi.progress}%`;
+            const marketingRagDiv = document.getElementById('marketingRagStatus');
+            marketingRagDiv.textContent = getRagStatusText(marketingAreaKpi.progress);
+            marketingRagDiv.className = `rag-indicator mt-2 ${getRagClass(marketingAreaKpi.progress)}`;
+        }
+
+        const timelineContainer = document.querySelector('.timeline');
+        timelineContainer.innerHTML = ''; 
+        projectData.stages.forEach(stage => {
+            let statusClass = '';
+            if (stage.status === 'Completada') statusClass = 'completed';
+            else if (stage.status === 'En Progreso') statusClass = 'in-progress';
+            else statusClass = 'pending';
+
+            const item = document.createElement('div');
+            item.classList.add('timeline-item', statusClass);
+            item.innerHTML = `
+                <div class="timeline-content">
+                    <h4>${stage.name}</h4>
+                    <p class="text-sm text-gray-500">${stage.dateRange}</p>
+                    <p class="text-sm font-semibold">${stage.status}</p>
+                </div>
+            `;
+            timelineContainer.appendChild(item);
+        });
+
+        let criticalBlockedCount = 0;
+        let clientDependenciesCount = 0;
+        const pendingTasksTableBody = document.getElementById('pendingTasksTableBody');
+        pendingTasksTableBody.innerHTML = ''; 
+
+        projectData.areas.forEach(area => {
+            const areaIdName = area.name.toLowerCase().replace(/ y | & /g, '').replace(/\s+/g, '');
+            
+            const percentageSpanTab = document.getElementById(`${areaIdName}ProgressPercentage`);
+            if (percentageSpanTab) percentageSpanTab.innerText = area.progress;
+            
+            const areaProgressTextTitle = document.getElementById(`${areaIdName}AreaProgressText`);
+            if(areaProgressTextTitle) areaProgressTextTitle.innerText = area.progress;
+            
+            const areaRagTitle = document.getElementById(`${areaIdName}AreaRag`);
+            if(areaRagTitle) {
+                areaRagTitle.textContent = getRagStatusText(area.progress);
+                areaRagTitle.className = `rag-indicator ml-2 ${getRagClass(area.progress)}`;
+            }
+            
+            var areaChartOptions = {
+                chart: { type: 'donut', height: '100%' },
+                series: [area.progress, 100 - area.progress],
+                labels: [area.name, 'Pendiente'],
+                plotOptions: {
+                    pie: {
+                        donut: {
+                            size: '70%',
+                            labels: {
+                                show: true, name: { show: false },
+                                value: { 
+                                    show: true, fontSize: '24px', fontWeight: 'bold',
+                                    color: getRagClass(area.progress, true).replace('text-', '#').replace('-600',''),
+                                    formatter: val => `${val}%`
+                                },
+                                total: {
+                                    show: true, showAlways: false, label: area.name, fontSize: '16px', color: '#374151',
+                                    formatter: w => `${w.globals.series[0]}%`
+                                }
+                            }
+                        }
+                    }
+                },
+                colors: [getRagClass(area.progress).replace('rag-',''), '#e5e7eb'],
+                legend: { show: false }
+            };
+            
+            const chartElement = document.querySelector(`#${areaIdName}ProgressChart`);
+            if (chartElement) {
+                if (chartElement.chart) {
+                    chartElement.chart.destroy();
+                }
+                const chart = new ApexCharts(chartElement, areaChartOptions);
+                chart.render();
+                chartElement.chart = chart; 
+            }
+
+            const tasksListContainer = document.getElementById(`${areaIdName}TasksList`);
+            if (tasksListContainer) {
+                tasksListContainer.innerHTML = ''; 
+                area.tasks.forEach(task => {
+                    const taskElement = document.createElement('div');
+                    taskElement.classList.add('p-3.5', 'rounded-lg', 'border', 'border-gray-200', 'hover:shadow-md', 'transition-shadow');
+                    
+                    let tooltipContent = `<strong>Detalle:</strong> ${task.details}<br><strong>Responsable:</strong> ${task.responsible}`;
+                    if (task.pending) tooltipContent += `<br><strong class="text-red-400">Pendiente:</strong> ${task.pending}`;
+                    if (task.impact) tooltipContent += `<br><strong class="text-yellow-400">Impacto:</strong> ${task.impact}`;
+                    if (task.dueDate) tooltipContent += `<br><strong>Fecha Est. Culm.:</strong> ${task.dueDate}`;
+
+
+                    taskElement.innerHTML = `
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="font-semibold text-gray-700 tooltip">${task.name}
+                                <span class="tooltiptext">${tooltipContent}</span>
+                            </span>
+                            <span class="text-sm font-bold ${getRagClass(task.progress, true)}">${task.progress}%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar ${getRagClass(task.progress)}" style="width: ${task.progress}%;">
+                               ${task.progress > 15 ? task.progress + '%' : ''}
+                            </div>
+                        </div>
+                        ${task.progress < 100 && task.pending && task.pending.trim() !== "" ? `<p class="mt-1.5 text-xs text-red-500 font-medium">Pendiente: ${task.pending} (Resp: ${task.responsible})</p>` : ''}
+                    `;
+                    tasksListContainer.appendChild(taskElement);
+
+                    if (task.progress < 100 && task.pending && task.pending.trim() !== "") {
+                        const row = pendingTasksTableBody.insertRow();
+                        // Alternar color de fondo para filas
+                        row.className = (pendingTasksTableBody.rows.length % 2 === 0) ? 'bg-gray-50' : '';
+                        // Área
+                        const areaCell = row.insertCell();
+                        areaCell.className = "px-4 py-3 font-semibold text-blue-900";
+                        areaCell.textContent = area.name;
+                        // Tarea Crítica
+                        const nameCell = row.insertCell();
+                        nameCell.className = "px-4 py-3 font-medium text-gray-800";
+                        nameCell.innerHTML = `<span title="${task.details}">${task.name}</span>`;
+                        // Estado Actual / Bloqueo
+                        const pendingCell = row.insertCell();
+                        pendingCell.className = "px-4 py-3";
+                        pendingCell.innerHTML = `<span class="text-red-600 font-semibold">${task.pending}</span>`;
+                        // Responsable(s)
+                        const respCell = row.insertCell();
+                        respCell.className = "px-4 py-3";
+                        respCell.innerHTML = `<span class="text-gray-700">${task.responsible}</span>`;
+                        // Progreso
+                        const progCell = row.insertCell();
+                        progCell.className = "px-4 py-3";
+                        progCell.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="status-dot ${getRagClass(task.progress)}" aria-label="Estado"></span>
+                                <span class="font-bold">${task.progress}%</span>
+                            </div>
+                        `;
+                        // Fecha Est. Culminación (estimación día y mes)
+                        const dateCell = row.insertCell();
+                        dateCell.className = "px-4 py-3 text-sm";
+                        // Estimar fecha si es posible
+                        let estimatedDate = "No definido";
+                        if (task.dueDate && task.dueDate !== "N/A" && !/^A definir/i.test(task.dueDate)) {
+                            // Si la fecha ya tiene día y mes, usarla
+                            if (/\d{1,2} de [A-Za-záéíóúÁÉÍÓÚ]+/i.test(task.dueDate)) {
+                                estimatedDate = task.dueDate;
+                            } else {
+                                // Si solo tiene mes y año, estimar el último día hábil del mes
+                                const meses = {
+                                    'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
+                                    'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+                                };
+                                let partes = task.dueDate.match(/([A-Za-záéíóúÁÉÍÓÚ]+)\s*(\d{4})?/i);
+                                if (partes && meses[partes[1].toLowerCase()]) {
+                                    let year = partes[2] ? parseInt(partes[2]) : 2025;
+                                    let month = meses[partes[1].toLowerCase()];
+                                    let lastDay = new Date(year, month + 1, 0).getDate();
+                                    estimatedDate = `${lastDay} de ${partes[1][0].toUpperCase() + partes[1].slice(1).toLowerCase()}`;
+                                } else {
+                                    estimatedDate = task.dueDate;
+                                }
+                            }
+                        } else if (task.dueDate && /^A definir/i.test(task.dueDate)) {
+                            estimatedDate = "Por definir";
+                        }
+                        dateCell.textContent = estimatedDate;
+                        // Impacto Potencial
+                        const impactCell = row.insertCell();
+                        impactCell.className = "px-4 py-3 text-xs";
+                        impactCell.textContent = task.impact && task.impact !== "" ? task.impact : "Sin impacto definido";
+
+                        if (task.progress === 0 && (task.name.includes("Integración OMS") || task.name.includes("BBDD KOAJ Lovers") || task.name.includes("Implementación Estrategia Marketing") )) { 
+                            criticalBlockedCount++;
+                        }
+                        if (task.responsible && task.responsible.toLowerCase().includes("cliente (permoda)")) { 
+                            clientDependenciesCount++;
+                        }
+                    }
+                });
+            }
+        });
+        
+        document.getElementById('criticalTasksValue').innerText = criticalBlockedCount;
+        const criticalTasksRag = document.getElementById('criticalTasksRagStatus');
+        criticalTasksRag.textContent = criticalBlockedCount > 0 ? 'ROJO' : 'VERDE';
+        criticalTasksRag.className = `rag-indicator mt-2 ${criticalBlockedCount > 0 ? 'rag-red' : 'rag-green'}`;
+
+        document.getElementById('pendingClientActionsValue').innerText = clientDependenciesCount;
+        const clientActionsRag = document.getElementById('pendingClientActionsRagStatus');
+        clientActionsRag.textContent = clientDependenciesCount > 0 ? (clientDependenciesCount > 1 ? 'ROJO' : 'ÁMBAR') : 'VERDE';
+        clientActionsRag.className = `rag-indicator mt-2 ${clientDependenciesCount > 0 ? (clientDependenciesCount > 1 ? 'rag-red' : 'rag-amber') : 'rag-green'}`;
+
+        if (pendingTasksTableBody.rows.length === 0) {
+            const row = pendingTasksTableBody.insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = 7; // Ajustado a 7 columnas
+            cell.className = 'text-center py-5 text-gray-500';
+            cell.textContent = '¡No hay tareas pendientes críticas identificadas (según análisis contractual y estado actual)!';
+        }
+    });
+
+    function openTab(event, tabName) {
+        var i, tabcontent, tabbuttons;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+            tabcontent[i].classList.remove("active");
+        }
+        tabbuttons = document.getElementsByClassName("tab-button");
+        for (i = 0; i < tabbuttons.length; i++) {
+            tabbuttons[i].classList.remove("active");
+        }
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName).classList.add("active");
+        event.currentTarget.classList.add("active");
+    }
+</script>
+</body>
+</html>
